@@ -1,0 +1,45 @@
+# Fully offline config for tests and CI: no API keys, no model downloads.
+#  - hashing embedder: deterministic feature-hashing vectors (a lexical stand-in for a real model)
+#  - lexical reranker: deterministic stand-in for the cross-encoder
+#  - fake LLM: deterministic extractive answers and a token-overlap "judge"
+# Numbers produced with this config only show that the plumbing works and catch
+# regressions. They are NOT model-quality numbers and never go on a resume.
+
+database:
+  url: postgresql://filingqa:filingqa@localhost:5433/filingqa_offline
+
+embedding:
+  provider: hashing
+  model: hashing
+  dimensions: 512
+
+llm:
+  provider: fake
+  model: fake-extractive
+
+reranker:
+  provider: lexical
+  model: lexical-overlap
+
+retrieval:
+  mode: hybrid_rerank
+  top_k: 5
+  candidates: 30
+  rerank_candidates: 20
+
+refusal:
+  # On the lexical stand-in's scale, 0.35 means roughly "at least half of the query's
+  # IDF-weighted terms appear in the best passage". Not tuned for the real cross-encoder.
+  min_rerank_score: 0.35
+  min_vector_similarity: 0.05
+
+eval:
+  golden_path: tests/fixtures/mini_golden_SYNTHETIC.jsonl
+  thresholds_path: eval/thresholds.offline.json
+  results_dir: results/offline
+  modes: [vector, bm25, hybrid, hybrid_rerank]
+  answer_modes: [hybrid_rerank]
+  min_verified: 0
+  judge:
+    provider: fake
+    model: fake-judge

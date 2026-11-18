@@ -1,0 +1,4 @@
+{
+  "_comment": "Regression gate for the official eval (make eval). Intentionally empty until the first official run: thresholds must come from measured numbers, never targets. After your first official run, baseline them with `make thresholds` (quality metrics may drop by 0.03, latency/cost may rise 25%) and commit this file.",
+  "metrics": {}
+}

@@ -1,0 +1,20 @@
+# Local-model variant: sentence-transformers embeddings (no embedding API cost),
+# cross-encoder reranker, OpenAI only for answers and judging.
+# Needs: pip install -e ".[local]"
+
+database:
+  url: postgresql://filingqa:filingqa@localhost:5433/filingqa_local
+
+embedding:
+  provider: sentence-transformers
+  model: BAAI/bge-small-en-v1.5
+  # bge models expect this instruction on queries (not on passages).
+  query_prefix: "Represent this sentence for searching relevant passages: "
+  batch_size: 64
+
+reranker:
+  provider: cross-encoder
+  model: cross-encoder/ms-marco-MiniLM-L-6-v2
+
+eval:
+  results_dir: results/local

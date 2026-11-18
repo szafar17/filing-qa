@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "cik": 9900001,
+  "ticker": "ZZACM",
+  "company": "Acme Robotics Corp. (SYNTHETIC)",
+  "form_type": "10-K",
+  "accession": "0009900001-25-000004",
+  "filing_date": "2025-02-20",
+  "period_of_report": "2024-12-31",
+  "fiscal_year_end": "1231",
+  "source_url": "https://example.invalid/synthetic/SYNTHETIC_acme_robotics_10-K_FY2024.html"
+}

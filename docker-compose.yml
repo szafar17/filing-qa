@@ -1,0 +1,32 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: filingqa-db
+    environment:
+      POSTGRES_USER: filingqa
+      POSTGRES_PASSWORD: filingqa
+      POSTGRES_DB: filingqa
+    # Host port 5433 so it does not collide with a Postgres you may already run on 5432.
+    ports:
+      - "5433:5432"
+    # HNSW index builds over ~100k+ vectors want more memory than the defaults.
+    command:
+      - postgres
+      - -c
+      - maintenance_work_mem=1GB
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - max_parallel_maintenance_workers=2
+    shm_size: 1gb
+    # Schema is applied by `make migrate` (python -m filingqa.store migrate).
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U filingqa -d filingqa"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  pgdata:
