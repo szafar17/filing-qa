@@ -1,0 +1,4 @@
+{
+  "_comment": "Regression gate for the optional live-eval CI job (golden-subset corpus, real models). Empty until that job has run once; then download its results artifact and baseline with: python -m filingqa.eval.gate results/ci/latest.json eval/thresholds.ci.json --write",
+  "metrics": {}
+}

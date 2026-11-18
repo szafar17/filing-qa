@@ -115,11 +115,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--write", action="store_true", help="write thresholds baselined on results")
     ap.add_argument("--abs-margin", type=float, default=0.03)
     ap.add_argument("--rel-margin", type=float, default=0.25)
+    ap.add_argument(
+        "--metrics",
+        default=None,
+        help="comma-separated metric names to baseline (default: recall@5, mrr, faithfulness, "
+        "refusal_accuracy, latency_ms_p95, cost_usd_per_query)",
+    )
     args = ap.parse_args(argv)
     results = json.loads(Path(args.results).read_text())
     flat = flatten_metrics(results)
     if args.write:
-        th = thresholds_from_results(flat, abs_margin=args.abs_margin, rel_margin=args.rel_margin)
+        extra = {"include": tuple(m.strip() for m in args.metrics.split(","))} if args.metrics else {}
+        th = thresholds_from_results(flat, abs_margin=args.abs_margin, rel_margin=args.rel_margin, **extra)
         payload = {
             "_comment": (
                 f"Baselined from {args.results} (run {results.get('run_id')}, official="

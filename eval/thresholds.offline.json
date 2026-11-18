@@ -1,0 +1,50 @@
+{
+  "_comment": "CI regression gate for the OFFLINE smoke eval (synthetic mini corpus, hashing embedder, lexical reranker, fake LLM). Baselined from a measured run with `python -m filingqa.eval.gate results/offline/smoke_latest.json eval/thresholds.offline.json --write --abs-margin 0.05 --metrics recall@5,recall@10,mrr,faithfulness,refusal_accuracy,false_refusal_rate`. These numbers only guard the plumbing against regressions; they say nothing about real model quality.",
+  "metrics": {
+    "answer.hybrid_rerank.faithfulness": {
+      "min": 0.95
+    },
+    "answer.hybrid_rerank.false_refusal_rate": {
+      "max": 0.0
+    },
+    "answer.hybrid_rerank.refusal_accuracy": {
+      "min": 0.6167
+    },
+    "retrieval.bm25.mrr": {
+      "min": 0.8346
+    },
+    "retrieval.bm25.recall@10": {
+      "min": 0.95
+    },
+    "retrieval.bm25.recall@5": {
+      "min": 0.95
+    },
+    "retrieval.hybrid.mrr": {
+      "min": 0.7769
+    },
+    "retrieval.hybrid.recall@10": {
+      "min": 0.95
+    },
+    "retrieval.hybrid.recall@5": {
+      "min": 0.95
+    },
+    "retrieval.hybrid_rerank.mrr": {
+      "min": 0.8346
+    },
+    "retrieval.hybrid_rerank.recall@10": {
+      "min": 0.95
+    },
+    "retrieval.hybrid_rerank.recall@5": {
+      "min": 0.95
+    },
+    "retrieval.vector.mrr": {
+      "min": 0.6679
+    },
+    "retrieval.vector.recall@10": {
+      "min": 0.8731
+    },
+    "retrieval.vector.recall@5": {
+      "min": 0.8731
+    }
+  }
+}

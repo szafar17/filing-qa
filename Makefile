@@ -2,6 +2,7 @@
 PY ?= .venv/bin/python
 CONFIG ?= config/default.yaml
 OFFLINE ?= config/offline.yaml
+OFFLINE_DB ?= postgresql://filingqa:filingqa@localhost:5433/filingqa_offline
 
 .PHONY: help install up down migrate download index embed ingest stats serve \
         draft-golden label eval thresholds test test-unit lint format \
@@ -67,12 +68,12 @@ format:
 	$(PY) -m ruff format .
 	$(PY) -m ruff check --fix .
 
-offline-ingest: ## load the synthetic mini corpus with offline components
-	$(PY) -m filingqa.store --config $(OFFLINE) migrate
-	$(PY) -m filingqa.ingest --config $(OFFLINE) local tests/fixtures/corpus
-	$(PY) -m filingqa.ingest --config $(OFFLINE) embed
+offline-ingest: ## load the synthetic mini corpus into its own database (filingqa_offline)
+	FILINGQA_DATABASE_URL=$(OFFLINE_DB) $(PY) -m filingqa.store --config $(OFFLINE) migrate
+	FILINGQA_DATABASE_URL=$(OFFLINE_DB) $(PY) -m filingqa.ingest --config $(OFFLINE) local tests/fixtures/corpus
+	FILINGQA_DATABASE_URL=$(OFFLINE_DB) $(PY) -m filingqa.ingest --config $(OFFLINE) embed
 
 eval-offline: offline-ingest ## smoke eval on synthetic data (what CI runs), gated by thresholds.offline.json
-	$(PY) -m filingqa.eval --config $(OFFLINE) --smoke
+	FILINGQA_DATABASE_URL=$(OFFLINE_DB) $(PY) -m filingqa.eval --config $(OFFLINE) --smoke
 
 ci: lint test eval-offline ## everything CI runs

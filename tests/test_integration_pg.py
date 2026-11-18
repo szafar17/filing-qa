@@ -316,3 +316,44 @@ def test_api_with_real_store(comps):
             },
         ).json()
     assert body["refused"] is False and body["citations"][0]["ticker"] == "ZZBWF"
+
+
+def test_official_eval_refuses_index_with_synthetic_filings(
+    indexed_db, pg_url, tmp_path, monkeypatch, capsys
+):
+    from datetime import UTC, datetime
+
+    from filingqa.eval.__main__ import main
+    from filingqa.eval.golden import GoldenItem, GoldPassage, write_jsonl
+
+    monkeypatch.setenv("FILINGQA_DATABASE_URL", pg_url)
+    g = tmp_path / "golden.jsonl"
+    write_jsonl(
+        g,
+        [
+            GoldenItem(
+                id="q1",
+                question="What was revenue?",
+                labeled_by="human",
+                verified=True,
+                verified_at=datetime(2026, 1, 1, tzinfo=UTC),
+                gold=[GoldPassage(accession="0009900001-25-000004", quote="Total revenue")],
+            )
+        ],
+    )
+    # real (non-fake) providers, but retrieval-only and no reranker: nothing calls an API
+    code = main(
+        [
+            "--config",
+            "config/default.yaml",
+            "--golden",
+            str(g),
+            "--min-verified",
+            "1",
+            "--retrieval-only",
+            "--modes",
+            "bm25",
+        ]
+    )
+    assert code == 2
+    assert "synthetic test filing" in capsys.readouterr().out

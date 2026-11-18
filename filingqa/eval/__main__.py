@@ -100,6 +100,16 @@ def main(argv: list[str] | None = None) -> int:
     answer_modes = [] if args.retrieval_only else _modes(args.answer_modes, cfg.eval.answer_modes)
     need_rerank = "hybrid_rerank" in modes or "hybrid_rerank" in answer_modes
     comps = build_components(cfg, need_reranker=need_rerank)
+    if official:
+        n_synth = comps.store.stats()["synthetic_filings"]
+        if n_synth:
+            print(
+                f"REFUSING official eval: the index at {cfg.database.url.rsplit('@', 1)[-1]} contains "
+                f"{n_synth} synthetic test filing(s), which could be retrieved for real questions. "
+                "Keep the synthetic corpus in its own database (see config/offline.yaml)."
+            )
+            comps.close()
+            return 2
     if comps.store.bm25_stats_stale():
         print("WARNING: BM25 statistics are stale; run `python -m filingqa.ingest index` first.")
     judge_llm = None if (args.no_judge or args.retrieval_only) else make_llm(cfg.eval.judge)
