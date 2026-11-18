@@ -28,6 +28,8 @@ def test_user_agent_is_required():
         get_user_agent({"SEC_USER_AGENT": "no-email-here"})
     with pytest.raises(UserAgentError, match="example"):
         get_user_agent({"SEC_USER_AGENT": "Jane Doe jane@example.com"})
+    with pytest.raises(UserAgentError, match="example"):
+        get_user_agent({"SEC_USER_AGENT": "Firstname Lastname you@yourdomain.com"})
     assert get_user_agent({"SEC_USER_AGENT": f"  {UA} "}) == UA
 
 

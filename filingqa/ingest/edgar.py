@@ -53,7 +53,7 @@ def get_user_agent(env: dict[str, str] | None = None) -> str:
         raise UserAgentError(
             "SEC_USER_AGENT must contain a name and a contact email, e.g. 'Jane Doe jane.doe@yourdomain.com'."
         )
-    if "example.com" in ua.lower():
+    if any(placeholder in ua.lower() for placeholder in ("example.com", "yourdomain.com")):
         raise UserAgentError("SEC_USER_AGENT still contains the example address; use your own.")
     return ua
 
