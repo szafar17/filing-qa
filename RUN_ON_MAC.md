@@ -205,6 +205,16 @@ the item counts. If a number is worse than you hoped, change the system (chunk s
 `candidates`, `rerank_candidates`, refusal threshold picked from the sweep), rerun
 `make eval`, and report what that run measures.
 
+Useful variations:
+
+* Answer quality for the baseline too (about twice the answer and judge cost):
+  `.venv/bin/python -m filingqa.eval --answer-modes vector,hybrid_rerank`
+* After changing `chunking:` settings, re-chunk everything and re-embed (embeddings of
+  replaced chunks are deleted automatically, so this repeats the ~$1 embedding cost):
+  `.venv/bin/python -m filingqa.ingest index --force && make embed`
+  Golden-set labels survive re-chunking: gold passages are character spans in the filing
+  text, re-checked against the index at the start of every eval.
+
 ## 12. Optional: the live eval in GitHub Actions
 
 In your GitHub repository: Settings → Secrets and variables → Actions → add
