@@ -1,4 +1,4 @@
-# Run Filing Q&A on a Mac, end to end
+# Running Filing Q&A end to end (macOS)
 
 This walks from a fresh checkout to real, quotable numbers: 500+ filings indexed, a
 human-verified golden set of 100+ questions, and an official eval run. Every command is
@@ -188,7 +188,7 @@ git commit -m "Baseline eval thresholds from the first official run"
 
 From now on `make eval` exits 1 if a metric regresses past its bound.
 
-## 11. Reading the numbers (for the README and the resume)
+## 11. Reading the numbers
 
 | claim | where it comes from |
 |---|---|
@@ -200,8 +200,7 @@ From now on `make eval` exits 1 if a metric regresses past its bound.
 | $/query | end-to-end table → cost per query (embedding + answer LLM; judge excluded) |
 | refusal behaviour | refusal accuracy and false refusal rate |
 
-Copy them into the README results table and use exactly these values on the resume, with
-the item counts. If a number is worse than you hoped, change the system (chunk size,
+Copy them into the README results section exactly as measured, with the item counts. If a number is worse than you hoped, change the system (chunk size,
 `candidates`, `rerank_candidates`, refusal threshold picked from the sweep), rerun
 `make eval`, and report what that run measures.
 

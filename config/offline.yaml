@@ -3,7 +3,7 @@
 #  - lexical reranker: deterministic stand-in for the cross-encoder
 #  - fake LLM: deterministic extractive answers and a token-overlap "judge"
 # Numbers produced with this config only show that the plumbing works and catch
-# regressions. They are NOT model-quality numbers and never go on a resume.
+# regressions. They are NOT model-quality numbers and are never reported as results.
 
 database:
   url: postgresql://filingqa:filingqa@localhost:5433/filingqa_offline

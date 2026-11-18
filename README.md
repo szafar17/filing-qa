@@ -17,10 +17,10 @@ drops below its committed threshold.
 **Stack:** Python, FastAPI, PostgreSQL + pgvector, BM25, OpenAI API, sentence-transformers
 cross-encoders, pytest, GitHub Actions.
 
-> **Status.** The code, tests and CI are complete and pass. The real numbers (recall, faithfulness,
-> latency, cost) come from running it on your machine against the live EDGAR corpus and the
-> OpenAI API, which this repository has not been run against yet. See
-> [RUN_ON_MAC.md](RUN_ON_MAC.md). The results table below stays empty until then.
+> **Status.** Code, tests (145 passing) and CI are complete, and the full pipeline runs end to
+> end on a synthetic mini corpus. The full-corpus evaluation (500+ live EDGAR filings with
+> OpenAI models) has not been run yet, so no results are reported below. See
+> [RUNNING.md](RUNNING.md) to run it.
 
 ## Architecture
 
@@ -69,8 +69,8 @@ docker exec filingqa-db createdb -U filingqa filingqa_offline
 make eval-offline          # index 3 synthetic filings, run the smoke eval and its gate
 ```
 
-For the real thing (500+ filings, OpenAI models, your own golden set) follow
-[RUN_ON_MAC.md](RUN_ON_MAC.md) step by step.
+For the full pipeline (500+ filings, OpenAI models, a human-verified golden set) follow
+[RUNNING.md](RUNNING.md) step by step.
 
 ## How it works
 
@@ -284,23 +284,11 @@ and the official eval refuses to run against an index that contains synthetic fi
 
 ## Results
 
-Fill these in from real runs (`results/latest.md`). Nothing below has been measured yet.
-
-| retrieval mode | recall@1 | recall@5 | recall@10 | MRR | p95 retrieval ms |
-|---|---|---|---|---|---|
-| vector (baseline) | fill in from real runs | | | | |
-| bm25 | fill in from real runs | | | | |
-| hybrid (RRF) | fill in from real runs | | | | |
-| hybrid + cross-encoder | fill in from real runs | | | | |
-
-| end-to-end (hybrid + cross-encoder) | value |
-|---|---|
-| golden set (human-verified items, of which unanswerable) | fill in from real runs |
-| faithfulness | fill in from real runs |
-| refusal accuracy / false refusal rate | fill in from real runs |
-| p50 / p95 latency | fill in from real runs |
-| cost per query | fill in from real runs |
-| corpus (filings, chunks) | fill in from real runs |
+Not yet measured on the full corpus. An official run (`make eval`) writes `results/latest.md`
+with, for each retrieval mode (vector baseline, BM25, hybrid, hybrid + cross-encoder):
+recall@1/5/10, MRR and retrieval latency; and, end to end: faithfulness, refusal accuracy,
+false refusal rate, p50/p95 latency and cost per query, alongside the corpus size and the
+number of human-verified golden-set items. Results will be added here from that run only.
 
 ## Configuration
 
