@@ -61,14 +61,13 @@ class CrossEncoderReranker(Reranker):
             params = inspect.signature(self._ce.predict).parameters
         except (TypeError, ValueError):
             return {}
+        try:
+            import torch
+        except ImportError:  # only test doubles run without torch; leave their default alone
+            return {}
         for name in ("activation_fn", "activation_fct"):
             if name in params:
-                try:
-                    import torch
-
-                    return {name: torch.nn.Identity()}
-                except ImportError:  # test doubles without torch
-                    return {name: None}
+                return {name: torch.nn.Identity()}
         return {}
 
     def score(self, query: str, passages: list[str]) -> list[float]:

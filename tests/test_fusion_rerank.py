@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import math
 
 import numpy as np
@@ -66,8 +67,12 @@ def test_cross_encoder_maps_logits_through_sigmoid():
     scores = rr.score("q", ["p1", "p2", "p3"])
     assert scores == pytest.approx([1 / (1 + math.exp(-2)), 1 / (1 + math.exp(1)), 0.5])
     assert ce.calls[0]["n"] == 3 and ce.calls[0]["batch_size"] == 8
-    # we ask for raw logits (identity activation) so the sigmoid is applied exactly once
-    assert ce.calls[0]["activation_fn"] is not None
+    # with torch available we ask for raw logits (identity activation) so the sigmoid is
+    # applied exactly once; without torch (no real CrossEncoder possible) nothing is passed
+    if importlib.util.find_spec("torch") is not None:
+        assert type(ce.calls[0]["activation_fn"]).__name__ == "Identity"
+    else:
+        assert ce.calls[0]["activation_fn"] is None
 
 
 def test_cross_encoder_two_class_head_uses_softmax():
