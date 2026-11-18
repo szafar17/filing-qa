@@ -27,6 +27,7 @@ def render_markdown(r: dict[str, Any]) -> str:
         f"evaluated: {g['n_evaluated']} ({g['n_answerable']} answerable, "
         f"{g['n_unanswerable']} unanswerable); skipped (gold not found): "
         f"{g['n_skipped_unresolved_gold']}",
+        f"- verified-item provenance: {g.get('verified_provenance') or 'n/a'}",
         f"- corpus: {c.get('filings')} filings from {c.get('companies')} companies "
         f"(+{c.get('synthetic_filings')} synthetic), {c.get('chunks')} chunks "
         f"({c.get('table_chunks')} with tables)",

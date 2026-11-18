@@ -121,12 +121,25 @@ def main(argv: list[str] | None = None) -> int:
         relevance_overlap=cfg.eval.relevance_overlap,
         judge=judge_llm is not None,
     )
+    all_items = load_golden(golden_path)
+    verified = [i for i in all_items if i.counts_as_verified()]
+    provenance = {
+        "llm_drafted_accepted_unchanged": sum(i.origin == "llm-draft" and not i.edited for i in verified),
+        "llm_drafted_edited_by_human": sum(i.origin == "llm-draft" and i.edited for i in verified),
+        "written_by_human": sum(i.origin == "human-written" for i in verified),
+        "unanswerable": sum(not i.answerable for i in verified),
+    }
     results = run_eval(
         comps,
         items,
         opts,
         judge_llm,
-        {"path": golden_path, "n_items_total": len(load_golden(golden_path)), "n_human_verified": n_verified},
+        {
+            "path": golden_path,
+            "n_items_total": len(all_items),
+            "n_human_verified": n_verified,
+            "verified_provenance": provenance,
+        },
     )
     comps.close()
 
