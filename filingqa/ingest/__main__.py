@@ -29,6 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     i = sub.add_parser("index")
     i.add_argument("--force", action="store_true", help="re-index filings already loaded")
     i.add_argument("--limit", type=int, default=None)
+    i.add_argument("--workers", type=int, default=None, help="parse processes (default: cores-1, max 4)")
     sub.add_parser("embed")
     a = sub.add_parser("all")
     a.add_argument("--tickers", default=None)
@@ -57,7 +58,11 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"downloaded_or_cached": len(done)}))
     if args.cmd in ("index", "all"):
         st = pipeline.index_raw_dir(
-            cfg, store(), force=getattr(args, "force", False), limit=getattr(args, "limit", None)
+            cfg,
+            store(),
+            force=getattr(args, "force", False),
+            limit=getattr(args, "limit", None),
+            workers=getattr(args, "workers", None),
         )
         print(json.dumps(st.__dict__, default=str))
     if args.cmd in ("embed", "all"):

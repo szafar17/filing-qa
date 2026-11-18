@@ -4,22 +4,23 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-from filingqa.config import AppConfig
+from filingqa.config import AppConfig, ChunkingConfig
 from filingqa.cost import PriceTable
 from filingqa.embeddings.base import Embedder
 from filingqa.ingest.chunker import CHUNKER_VERSION, FilingMeta, chunk_filing
 from filingqa.ingest.companies import load_tickers, resolve_companies
 from filingqa.ingest.edgar import EdgarClient, FilingRef, get_user_agent, load_cached_refs
 from filingqa.ingest.fiscal import infer_fiscal_period
-from filingqa.ingest.html_parser import PARSER_VERSION, parse_filing
+from filingqa.ingest.html_parser import PARSER_VERSION, ParsedFiling, parse_filing
 from filingqa.logging_utils import log_event
 from filingqa.store.repository import ChunkStore
 
@@ -183,35 +184,79 @@ def download_for_accessions(
 # --- index ---------------------------------------------------------------------------
 
 
+def _prepare(args: tuple[dict, str, dict]) -> tuple[FilingMeta, ParsedFiling, list]:
+    """Parse + label + chunk one cached filing. Top-level so a process pool can run it."""
+    ref_json, path, chunking = args
+    ref = FilingRef.from_json(ref_json)
+    meta = meta_from_ref(ref)
+    parsed = parse_filing(Path(path).read_bytes(), meta.form_type)
+    meta.fiscal_year, meta.fiscal_period = infer_fiscal_period(
+        meta.form_type, meta.period_of_report, ref.fiscal_year_end, parsed.dei
+    )
+    return meta, parsed, chunk_filing(parsed, meta, ChunkingConfig(**chunking))
+
+
 def index_raw_dir(
-    cfg: AppConfig, store: ChunkStore, *, force: bool = False, limit: int | None = None
+    cfg: AppConfig,
+    store: ChunkStore,
+    *,
+    force: bool = False,
+    limit: int | None = None,
+    workers: int | None = None,
 ) -> IndexStats:
+    """Index every downloaded filing. Parsing/chunking runs in a process pool (CPU-bound);
+    database writes stay in this process."""
     stats = IndexStats()
     cached = load_cached_refs(cfg.ingest.raw_dir)
     if limit:
         cached = cached[:limit]
-    t0 = time.perf_counter()
-    for i, (ref, path) in enumerate(cached, start=1):
+    todo = []
+    for ref, path in cached:
         if not force and store.filing_is_current(ref.accession, PARSER_VERSION, CHUNKER_VERSION):
             stats.filings_skipped += 1
-            continue
-        try:
-            stats.chunks += index_filing(
-                store, path.read_bytes(), meta_from_ref(ref), cfg, ref.fiscal_year_end
-            )
-            stats.filings_indexed += 1
-        except Exception as exc:
-            stats.filings_failed += 1
-            stats.failures.append(f"{ref.accession}: {type(exc).__name__}: {exc}")
-            log_event(log, "index_failed", logging.ERROR, accession=ref.accession, error=str(exc))
-        if i % 25 == 0 or i == len(cached):
+        else:
+            todo.append((ref.to_json(), str(path), cfg.chunking.model_dump()))
+    workers = workers or max(1, min(4, (os.cpu_count() or 2) - 1))
+    t0 = time.perf_counter()
+
+    def load(result: tuple[FilingMeta, ParsedFiling, list]) -> None:
+        meta, parsed, chunks = result
+        stats.chunks += store.replace_filing(meta, parsed, chunks, CHUNKER_VERSION)
+        stats.filings_indexed += 1
+
+    def fail(job: tuple[dict, str, dict], exc: BaseException) -> None:
+        stats.filings_failed += 1
+        acc = job[0]["accession"]
+        stats.failures.append(f"{acc}: {type(exc).__name__}: {exc}")
+        log_event(log, "index_failed", logging.ERROR, accession=acc, error=str(exc))
+
+    def progress(i: int) -> None:
+        if i % 25 == 0 or i == len(todo):
             log_event(
                 log,
                 "index_progress",
                 done=i,
-                total=len(cached),
+                total=len(todo),
+                workers=workers,
                 elapsed_s=round(time.perf_counter() - t0, 1),
             )
+
+    if workers <= 1 or len(todo) <= 1:
+        for i, job in enumerate(todo, start=1):
+            try:
+                load(_prepare(job))
+            except Exception as exc:
+                fail(job, exc)
+            progress(i)
+    else:
+        with ProcessPoolExecutor(max_workers=workers) as ex:
+            futs = {ex.submit(_prepare, job): job for job in todo}
+            for i, fut in enumerate(as_completed(futs), start=1):
+                try:
+                    load(fut.result())
+                except Exception as exc:
+                    fail(futs[fut], exc)
+                progress(i)
     store.refresh_bm25_stats()
     return stats
 

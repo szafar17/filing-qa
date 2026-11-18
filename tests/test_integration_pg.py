@@ -357,3 +357,72 @@ def test_official_eval_refuses_index_with_synthetic_filings(
     )
     assert code == 2
     assert "synthetic test filing" in capsys.readouterr().out
+
+
+def test_download_then_index_pipeline_with_mocked_edgar(indexed_db, tmp_path):
+    """ticker -> CIK -> submissions -> download -> parallel parse/chunk -> Postgres."""
+    import httpx
+
+    from filingqa.ingest.edgar import EdgarClient, RateLimiter
+    from filingqa.ingest.pipeline import download_filings, index_raw_dir
+
+    store, conn, cfg = indexed_db["store"], indexed_db["conn"], indexed_db["cfg"]
+    acc = "0009900001-25-999999"
+    html = (CORPUS / "SYNTHETIC_acme_robotics_10-K_FY2024.html").read_bytes()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("company_tickers.json"):
+            return httpx.Response(
+                200, json={"0": {"cik_str": 9900001, "ticker": "ZZACM", "title": "ACME ROBOTICS CORP"}}
+            )
+        if url.endswith("CIK0009900001.json"):
+            return httpx.Response(
+                200,
+                json={
+                    "name": "ACME ROBOTICS CORP",
+                    "fiscalYearEnd": "1231",
+                    "filings": {
+                        "recent": {
+                            "accessionNumber": [acc, "0009900001-25-000001"],
+                            "form": ["10-K", "8-K"],
+                            "filingDate": ["2025-02-20", "2025-01-05"],
+                            "reportDate": ["2024-12-31", ""],
+                            "primaryDocument": ["acme-20241231.htm", "8k.htm"],
+                        },
+                        "files": [],
+                    },
+                },
+            )
+        if url.endswith("/acme-20241231.htm"):
+            return httpx.Response(200, content=html)
+        return httpx.Response(404)
+
+    cfg2 = cfg.model_copy(deep=True)
+    cfg2.ingest.raw_dir = str(tmp_path / "raw")
+    from datetime import date
+
+    cfg2.ingest.start_date, cfg2.ingest.end_date = date(2024, 7, 1), date(2025, 6, 30)
+    client = EdgarClient(
+        "Test Runner tests@filingqa.invalid",
+        transport=httpx.MockTransport(handler),
+        limiter=RateLimiter(10, sleep=lambda s: None),
+    )
+    try:
+        done = download_filings(cfg2, tickers=["ZZACM"], client=client)
+        assert [r.accession for r, _ in done] == [acc]
+        stats = index_raw_dir(cfg2, store, workers=2)
+        assert stats.filings_indexed == 1 and stats.filings_failed == 0 and stats.chunks > 20
+        assert index_raw_dir(cfg2, store, workers=2).filings_skipped == 1  # already current
+        row = conn.execute(
+            "SELECT ticker, fiscal_year, fiscal_period, synthetic, source_url "
+            "FROM filings WHERE accession = %s",
+            (acc,),
+        ).fetchone()
+        assert row[:4] == ("ZZACM", 2024, "FY", False)
+        assert row[4] == (
+            "https://www.sec.gov/Archives/edgar/data/9900001/000990000125999999/acme-20241231.htm"
+        )
+    finally:
+        conn.execute("DELETE FROM filings WHERE accession = %s", (acc,))
+        store.refresh_bm25_stats()
