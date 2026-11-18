@@ -81,9 +81,12 @@ def light_stem(tok: str) -> str:
     """Very small suffix stripper so 'revenues' matches 'revenue' in offline doubles."""
     if tok.isdigit() or len(tok) <= 3:
         return tok
-    for suf in ("ies", "es", "s"):
-        if tok.endswith(suf) and len(tok) - len(suf) >= 3:
-            return tok[: -len(suf)] + ("y" if suf == "ies" else "")
+    if tok.endswith("ies") and len(tok) > 4:
+        return tok[:-3] + "y"  # liabilities -> liability
+    if tok.endswith(("sses", "xes", "zes", "ches", "shes")):
+        return tok[:-2]  # losses -> loss, taxes -> tax
+    if tok.endswith("s") and not tok.endswith(("ss", "us", "is")):
+        return tok[:-1]  # revenues -> revenue
     return tok
 
 
